@@ -24,4 +24,4 @@ api_version = "2025-10"
 scopes = "write_products"
 
 [auth]
-redirect_urls = [ "https://ls-bundle-inventory.vercel.app/api/auth" ]
+redirect_urls = [ "https://ls-bundle-inventory.vercel.app/api/callback" ]
