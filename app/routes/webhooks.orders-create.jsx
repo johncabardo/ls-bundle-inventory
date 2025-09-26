@@ -1,10 +1,9 @@
-// app/routes/webhooks.orders-create.jsx
 import { shopify } from "../shopify.server";
 
 export const action = async ({ request }) => {
   try {
-    // ✅ let Shopify do HMAC validation
-    const { topic, shop, payload } = await shopify.webhooks.process(request);
+    // ✅ Use processWebhook, not webhooks.process
+    const { topic, shop, payload } = await shopify.processWebhook(request);
 
     console.log(`✅ Webhook received: ${topic} from ${shop}`);
     console.log("Order payload:", payload);
@@ -13,7 +12,7 @@ export const action = async ({ request }) => {
       try {
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
-        // ✅ Create GraphQL client with *admin API access token* (not session)
+        // Use Admin API client (needs your app’s Admin API token)
         const client = new shopify.api.clients.Graphql({
           shop,
           accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
@@ -31,7 +30,7 @@ export const action = async ({ request }) => {
 
             const variantGid = `gid://shopify/ProductVariant/${variantId}`;
 
-            // 1. Fetch inventory levels
+            // Fetch inventory
             const inventoryQuery = await client.query({
               data: {
                 query: `
@@ -64,7 +63,7 @@ export const action = async ({ request }) => {
               continue;
             }
 
-            // 2. Adjust inventory
+            // Adjust inventory
             for (const { node } of levels) {
               const adjust = await client.query({
                 data: {
