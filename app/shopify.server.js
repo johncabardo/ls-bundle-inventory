@@ -31,13 +31,17 @@ const shopify = shopifyApp({
     : {}),
 });
 
-// ✅ Export both default and named
+// ✅ Export helpers
 export default shopify;
-export { shopify }; // <— so you can import { shopify }
-export const apiVersion = ApiVersion.January25;
-export const addDocumentResponseHeaders = shopify.addDocumentResponseHeaders;
-export const authenticate = shopify.authenticate;
-export const unauthenticated = shopify.unauthenticated;
-export const login = shopify.login;
-export const registerWebhooks = shopify.registerWebhooks;
-export const sessionStorage = shopify.sessionStorage;
+export { shopify };
+export const {
+  addDocumentResponseHeaders,
+  authenticate,
+  unauthenticated,
+  login,
+  registerWebhooks,
+  sessionStorage,
+} = shopify;
+
+// ✅ Explicitly re-export webhook processor
+export const processWebhook = shopify.webhooks.process;
