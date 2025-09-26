@@ -1,23 +1,22 @@
-import { shopify, authenticate } from "../shopify.server";
-
+import { shopify } from "../shopify.server";
 
 export const action = async ({ request }) => {
   const { topic, shop, session, payload: order } =
-    await authenticate.webhook(request);
+    await shopify.authenticate.webhook(request);
 
   if (topic === "ORDERS_CREATE") {
     try {
       console.log(`🛒 New order ${order.id} on ${shop}`);
 
-      // ✅ Correct client init
-      const client = new shopify.api.clients.Graphql({ session });
+      // ✅ Correct GraphQL client init
+      const client = new shopify.clients.Graphql({ session });
 
-      // Loop through each line item in the order
+      // Loop through each line item
       for (const line of order.line_items) {
         const bundleAttr = line.properties?._bundle_variants;
         if (!bundleAttr) continue; // skip non-bundle items
 
-        // Example format: "43188327448623_1_23700,41613760266287_4_0"
+        // Example: "43188327448623_1_23700,41613760266287_4_0"
         const childDefs = bundleAttr.split(",");
 
         for (const def of childDefs) {
@@ -25,7 +24,6 @@ export const action = async ({ request }) => {
           const quantity = Number(qty);
           if (!variantId || !quantity) continue;
 
-          // Convert to Shopify GID
           const variantGid = `gid://shopify/ProductVariant/${variantId}`;
 
           // 1. Fetch inventory levels
@@ -61,7 +59,7 @@ export const action = async ({ request }) => {
             continue;
           }
 
-          // 2. Decrease inventory at each location
+          // 2. Adjust inventory at each location
           for (const { node } of levels) {
             const inventoryLevelId = node.id;
 
