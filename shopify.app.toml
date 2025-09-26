@@ -2,7 +2,7 @@
 
 client_id = "af8eea2ad5b7f38ec7b086b0595ec958"
 name = "licksleeve-bundle-inventory"
-application_url = "https://shopify.dev/apps/default-app-home"
+application_url = "https://ls-bundle-inventory.vercel.app"
 embedded = true
 
 [build]
@@ -24,4 +24,4 @@ api_version = "2025-10"
 scopes = "write_products"
 
 [auth]
-redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+redirect_urls = [ "https://ls-bundle-inventory.vercel.app/api/auth" ]
