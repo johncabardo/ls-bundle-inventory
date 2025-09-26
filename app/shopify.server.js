@@ -31,7 +31,9 @@ const shopify = shopifyApp({
     : {}),
 });
 
+// ✅ Export both default and named
 export default shopify;
+export { shopify }; // <— so you can import { shopify }
 export const apiVersion = ApiVersion.January25;
 export const addDocumentResponseHeaders = shopify.addDocumentResponseHeaders;
 export const authenticate = shopify.authenticate;
