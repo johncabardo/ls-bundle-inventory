@@ -1,8 +1,9 @@
-import { shopify } from "../shopify.server";
+// app/routes/webhooks.orders-create.jsx
+import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
   try {
-    // ✅ Use processWebhook, not webhooks.process
+    // ✅ Use authenticate.webhook (built-in verification + parsing)
     const { topic, shop, payload } = await authenticate.webhook(request);
 
     console.log(`✅ Webhook received: ${topic} from ${shop}`);
@@ -12,12 +13,13 @@ export const action = async ({ request }) => {
       try {
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
-        // Use Admin API client (needs your app’s Admin API token)
-        const client = new shopify.api.clients.Graphql({
+        // ✅ Admin GraphQL client
+        const client = new shopify.clients.Graphql({
           shop,
           accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
         });
 
+        // Iterate line items
         for (const line of payload.line_items) {
           const bundleAttr = line.properties?._bundle_variants;
           if (!bundleAttr) continue;

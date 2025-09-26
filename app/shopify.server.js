@@ -42,6 +42,3 @@ export const {
   registerWebhooks,
   sessionStorage,
 } = shopify;
-
-// ✅ Explicitly re-export webhook processor
-export const processWebhook = shopify.webhooks.process;
