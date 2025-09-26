@@ -3,7 +3,7 @@ import { shopify } from "../shopify.server";
 export const action = async ({ request }) => {
   try {
     // ✅ Use processWebhook, not webhooks.process
-    const { topic, shop, payload } = await processWebhook(request);
+    const { topic, shop, payload } = await authenticate.webhook(request);
 
     console.log(`✅ Webhook received: ${topic} from ${shop}`);
     console.log("Order payload:", payload);
