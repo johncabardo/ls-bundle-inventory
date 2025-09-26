@@ -1,25 +1,28 @@
-import { authenticate } from "../shopify.server";
+import { authenticate, shopify } from "../shopify.server";
 
 export const action = async ({ request }) => {
-  const { topic, shop, session, payload: order } = await authenticate.webhook(request);
+  const { topic, shop, session, payload: order } =
+    await authenticate.webhook(request);
 
   if (topic === "ORDERS_CREATE") {
     try {
       console.log(`🛒 New order ${order.id} on ${shop}`);
 
-      const client = new shopify.clients.Graphql({ session });
+      // ✅ Correct client init
+      const client = new shopify.api.clients.Graphql({ session });
 
       // Loop through each line item in the order
       for (const line of order.line_items) {
         const bundleAttr = line.properties?._bundle_variants;
         if (!bundleAttr) continue; // skip non-bundle items
 
-        // Example: "43188327448623_1_23700,41613760266287_4_0"
+        // Example format: "43188327448623_1_23700,41613760266287_4_0"
         const childDefs = bundleAttr.split(",");
 
         for (const def of childDefs) {
           const [variantId, qty] = def.split("_");
           const quantity = Number(qty);
+          if (!variantId || !quantity) continue;
 
           // Convert to Shopify GID
           const variantGid = `gid://shopify/ProductVariant/${variantId}`;
@@ -49,7 +52,8 @@ export const action = async ({ request }) => {
           });
 
           const levels =
-            inventoryQuery.body.data.productVariant.inventoryItem.inventoryLevels.edges;
+            inventoryQuery.body?.data?.productVariant?.inventoryItem
+              ?.inventoryLevels?.edges || [];
 
           if (levels.length === 0) {
             console.warn(`⚠️ No inventory levels for ${variantGid}`);
@@ -64,7 +68,9 @@ export const action = async ({ request }) => {
               data: {
                 query: `
                   mutation adjustInventory($id: ID!, $delta: Int!) {
-                    inventoryAdjustQuantity(input: { inventoryLevelId: $id, availableDelta: $delta }) {
+                    inventoryAdjustQuantity(
+                      input: { inventoryLevelId: $id, availableDelta: $delta }
+                    ) {
                       inventoryLevel { id available }
                       userErrors { field message }
                     }
@@ -74,9 +80,15 @@ export const action = async ({ request }) => {
               },
             });
 
-            console.log(
-              `✅ Adjusted child variant ${variantId} (-${quantity}) at ${node.location.name}`
-            );
+            const errorMsg =
+              adjust.body?.data?.inventoryAdjustQuantity?.userErrors || [];
+            if (errorMsg.length > 0) {
+              console.error(`❌ Error adjusting ${variantId}:`, errorMsg);
+            } else {
+              console.log(
+                `✅ Adjusted child variant ${variantId} (-${quantity}) at ${node.location.name}`
+              );
+            }
           }
         }
       }
