@@ -3,6 +3,8 @@ import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
   try {
+    console.log("🔑 API Key:", process.env.SHOPIFY_API_KEY);
+console.log("🔑 Secret length:", process.env.SHOPIFY_API_SECRET?.length);
     // ✅ Use authenticate.webhook (built-in verification + parsing)
     const { topic, shop, payload } = await authenticate.webhook(request);
 
