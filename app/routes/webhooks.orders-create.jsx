@@ -1,19 +1,15 @@
 // app/routes/webhooks.orders-create.jsx
-import { json } from "@remix-run/node";
-import { Shopify } from "@shopify/shopify-api";
+// app/routes/webhooks.orders-create.jsx
+import { clients, Webhooks } from "@shopify/shopify-api";
 
 export const action = async ({ request }) => {
   try {
-    // 1️⃣ Get raw body for verification
     const rawBody = await request.text();
-
-    // 2️⃣ Get Shopify HMAC header
     const hmac = request.headers.get("x-shopify-hmac-sha256");
     const topic = request.headers.get("x-shopify-topic");
     const shop = request.headers.get("x-shopify-shop-domain");
 
-    // 3️⃣ Verify webhook signature
-    const verified = Shopify.Webhooks.Registry.isWebhookRequestValid(
+    const verified = Webhooks.Registry.isWebhookRequestValid(
       rawBody,
       hmac,
       process.env.SHOPIFY_API_SECRET
@@ -24,22 +20,18 @@ export const action = async ({ request }) => {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    // 4️⃣ Parse payload
     const payload = JSON.parse(rawBody);
     console.log(`✅ Webhook received: ${topic} from ${shop}`);
 
-    // 5️⃣ Process ORDERS_CREATE
     if (topic === "ORDERS_CREATE") {
       try {
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
-        // Shopify Admin GraphQL client
-        const client = new Shopify.Clients.Graphql(
+        const client = new clients.Graphql({
           shop,
-          process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN
-        );
+          accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+        });
 
-        // Iterate line items
         for (const line of payload.line_items) {
           const bundleAttr = line.properties?._bundle_variants;
           if (!bundleAttr) continue;
@@ -52,7 +44,6 @@ export const action = async ({ request }) => {
 
             const variantGid = `gid://shopify/ProductVariant/${variantId}`;
 
-            // Fetch inventory levels
             const inventoryQuery = await client.query({
               data: {
                 query: `
@@ -85,7 +76,6 @@ export const action = async ({ request }) => {
               continue;
             }
 
-            // Adjust inventory for each location
             for (const { node } of levels) {
               const adjust = await client.query({
                 data: {
@@ -127,6 +117,7 @@ export const action = async ({ request }) => {
     return new Response("Unauthorized", { status: 401 });
   }
 };
+
 
 
 // // app/routes/webhooks.orders-create.jsx
