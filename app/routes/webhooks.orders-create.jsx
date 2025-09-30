@@ -1,5 +1,6 @@
 // app/routes/webhooks.orders-create.jsx
-import { clients } from "@shopify/shopify-api";
+import { Graphql } from '@shopify/shopify-api';
+
 
 export const action = async ({ request }) => {
   try {
@@ -18,8 +19,8 @@ export const action = async ({ request }) => {
     if (topic === "orders/create") {
       console.log(`🛒 New order ${payload.id}`);
 
-      const client = new clients.Graphql({
-        shop,
+      const client = new Graphql({
+        shop: shop,
         accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
       });
 
