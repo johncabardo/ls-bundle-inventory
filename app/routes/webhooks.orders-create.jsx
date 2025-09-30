@@ -1,4 +1,4 @@
-import { GraphqlClient } from "@shopify/shopify-api";
+import { shopify } from "../shopify.server";
 
 export const action = async ({ request }) => {
   try {
@@ -14,8 +14,8 @@ export const action = async ({ request }) => {
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
         // ✅ Admin GraphQL client
-        const client = new GraphqlClient({
-          domain: shop, // e.g. "your-store.myshopify.com"
+        const admin = await shopify.api.clients.admin({
+          storeDomain: shop,
           accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
         });
 
@@ -33,7 +33,7 @@ export const action = async ({ request }) => {
             const variantGid = `gid://shopify/ProductVariant/${variantId}`;
 
             // Fetch inventory
-            const inventoryQuery = await client.query({
+            const inventoryQuery = await admin.query({
               data: {
                 query: `
                   query getVariantInventory($id: ID!) {
