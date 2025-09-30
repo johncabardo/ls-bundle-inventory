@@ -6,7 +6,7 @@ export const action = async ({ request }) => {
     const payload = await request.json();
 
     const topic = "ORDERS_CREATE"; // assume this is orders-create
-    const shop = payload.shop_domain || "unknown-shop"; // optional
+    const shop = request.headers.get("x-shopify-shop-domain") || "unknown-shop";
 
     console.log(`🔓 Bypassing authentication: processing webhook from ${shop}`);
     console.log("Order payload:", payload);
