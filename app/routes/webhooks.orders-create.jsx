@@ -15,11 +15,11 @@
 export const action = async ({ request }) => {
   try {
     // Optional lightweight secret check (set ENCRYPTION_KEY in env)
-    const webhookSecret = process.env.ENCRYPTION_KEY;
-    const token = request.headers.get("x-webhook-token");
-    if (!token || token !== webhookSecret) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+    // const webhookSecret = process.env.ENCRYPTION_KEY;
+    // const token = request.headers.get("x-webhook-token");
+    // if (!token || token !== webhookSecret) {
+    //   return new Response("Unauthorized", { status: 401 });
+    // }
 
 
     // Parse incoming webhook payload
