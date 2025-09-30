@@ -81,6 +81,7 @@ export const action = async ({ request }) => {
     console.log('lineItems:'+lineItems);
     for (const line of lineItems) {
       const bundleAttr = line.properties?._bundle_variants;
+      console.log(bundleAttr);
       if (!bundleAttr) continue;
 
       const childDefs = bundleAttr
