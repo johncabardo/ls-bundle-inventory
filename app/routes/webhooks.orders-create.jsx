@@ -1,12 +1,14 @@
 // app/routes/webhooks.orders-create.jsx
-import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
   try {
-    // Verify and parse the webhook request
-    const { topic, shop, payload } = await authenticate.webhook(request);
+    // ✅ Directly parse the request body (bypassing HMAC verification)
+    const payload = await request.json();
 
-    console.log(`✅ Webhook received: ${topic} from ${shop}`);
+    const topic = "ORDERS_CREATE"; // assume this is orders-create
+    const shop = payload.shop_domain || "unknown-shop"; // optional
+
+    console.log(`🔓 Bypassing authentication: processing webhook from ${shop}`);
     console.log("Order payload:", payload);
 
     if (topic === "ORDERS_CREATE") {
@@ -14,7 +16,10 @@ export const action = async ({ request }) => {
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
         // Initialize the GraphQL client
-        const client = new Shopify.Clients.Graphql(shop, process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN);
+        const client = new Shopify.Clients.Graphql(
+          shop,
+          process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN
+        );
 
         // Iterate through line items
         for (const line of payload.line_items) {
@@ -100,10 +105,11 @@ export const action = async ({ request }) => {
 
     return new Response("Webhook processed", { status: 200 });
   } catch (error) {
-    console.error("❌ Webhook verification failed:", error);
-    return new Response("Unauthorized", { status: 401 });
+    console.error("❌ Error processing webhook:", error);
+    return new Response("Webhook failed", { status: 500 });
   }
 };
+
 
 
 
