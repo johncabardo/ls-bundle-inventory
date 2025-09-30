@@ -1,27 +1,35 @@
 // app/routes/webhooks.orders-create.jsx
 import { authenticate } from "../shopify.server";
+import shopify from "../shopify.server"; // make sure you export the shopify client here
+
+// Optional loader for GET requests (avoid 405 surprises)
+export const loader = () => {
+  return new Response("Method Not Allowed", { status: 405 });
+};
 
 export const action = async ({ request }) => {
   try {
+    if (request.method !== "POST") {
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
     console.log("🔑 API Key:", process.env.SHOPIFY_API_KEY);
     console.log("🔑 Secret length:", process.env.SHOPIFY_API_SECRET?.length);
 
     // ✅ Read raw request body for HMAC verification
     const rawBody = await request.text();
 
-    // ✅ Pass rawBody and headers to authenticate.webhook
+    // ✅ Verify webhook with headers and raw body
     const { topic, shop, payload } = await authenticate.webhook({
       rawBody,
       headers: request.headers,
     });
 
     console.log(`✅ Webhook received: ${topic} from ${shop}`);
-    console.log("Order payload:", payload);
+    console.log("Order payload ID:", payload.id);
 
     if (topic === "ORDERS_CREATE") {
       try {
-        console.log(`🛒 New order ${payload.id} on ${shop}`);
-
         const client = new shopify.clients.Graphql({
           shop,
           accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
@@ -39,7 +47,7 @@ export const action = async ({ request }) => {
 
             const variantGid = `gid://shopify/ProductVariant/${variantId}`;
 
-            // Fetch inventory
+            // Fetch inventory levels
             const inventoryQuery = await client.query({
               data: {
                 query: `
@@ -67,7 +75,7 @@ export const action = async ({ request }) => {
               inventoryQuery.body?.data?.productVariant?.inventoryItem
                 ?.inventoryLevels?.edges || [];
 
-            if (levels.length === 0) {
+            if (!levels.length) {
               console.warn(`⚠️ No inventory levels for ${variantGid}`);
               continue;
             }
@@ -92,7 +100,8 @@ export const action = async ({ request }) => {
 
               const errors =
                 adjust.body?.data?.inventoryAdjustQuantity?.userErrors || [];
-              if (errors.length > 0) {
+
+              if (errors.length) {
                 console.error(`❌ Error adjusting ${variantId}:`, errors);
               } else {
                 console.log(
@@ -103,7 +112,7 @@ export const action = async ({ request }) => {
           }
         }
       } catch (err) {
-        console.error("❌ Webhook error:", err);
+        console.error("❌ Webhook processing error:", err);
         return new Response("Webhook failed", { status: 500 });
       }
     }
