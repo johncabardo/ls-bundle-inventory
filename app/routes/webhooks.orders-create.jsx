@@ -14,7 +14,7 @@ export const action = async ({ request }) => {
         const payload = JSON.parse(body);
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
-        // ✅ Admin GraphQL client
+        // ✅ Admin GraphQL clients
         const client = new Graphql({
           session: {
             shop,
