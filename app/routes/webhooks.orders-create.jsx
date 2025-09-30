@@ -80,7 +80,8 @@ export const action = async ({ request }) => {
     const lineItems = payload?.line_items || [];
     console.log('lineItems:'+lineItems);
     for (const line of lineItems) {
-      const bundleAttr = line.properties?._bundle_variants;
+      const bundleProp = line.properties?.find(p => p.name === "_bundle_variants");
+      const bundleAttr = bundleProp?.value;
       console.log(line.properties);
       console.log(bundleAttr);
       if (!bundleAttr) continue;
