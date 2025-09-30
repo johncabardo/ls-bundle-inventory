@@ -86,6 +86,8 @@ export const action = async ({ request }) => {
       .filter(Boolean)
       .slice(1); // remove first element
 
+      console.log(childDefs);
+
       for (const def of childDefs) {
         const [rawVariantId, qtyStr] = def.split("_");
         const variantId = extractVariantId(rawVariantId);
