@@ -1,12 +1,19 @@
-// // app/routes/webhooks.orders-create.jsx
+// app/routes/webhooks.orders-create.jsx
 import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
   try {
     console.log("🔑 API Key:", process.env.SHOPIFY_API_KEY);
-console.log("🔑 Secret length:", process.env.SHOPIFY_API_SECRET?.length);
-    // ✅ Use authenticate.webhook (built-in verification + parsing)
-    const { topic, shop, payload } = await authenticate.webhook(request);
+    console.log("🔑 Secret length:", process.env.SHOPIFY_API_SECRET?.length);
+
+    // ✅ Read raw request body for HMAC verification
+    const rawBody = await request.text();
+
+    // ✅ Pass rawBody and headers to authenticate.webhook
+    const { topic, shop, payload } = await authenticate.webhook({
+      rawBody,
+      headers: request.headers,
+    });
 
     console.log(`✅ Webhook received: ${topic} from ${shop}`);
     console.log("Order payload:", payload);
@@ -15,13 +22,11 @@ console.log("🔑 Secret length:", process.env.SHOPIFY_API_SECRET?.length);
       try {
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
-        // ✅ Admin GraphQL client
         const client = new shopify.clients.Graphql({
           shop,
           accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
         });
 
-        // Iterate line items
         for (const line of payload.line_items) {
           const bundleAttr = line.properties?._bundle_variants;
           if (!bundleAttr) continue;
