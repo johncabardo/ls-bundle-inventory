@@ -1,4 +1,5 @@
-import { GraphqlClient } from "@shopify/shopify-api";
+import { GraphqlClient } from "@shopify/shopify-api/lib/clients/admin/graphql/index.js";
+
 
 export const action = async ({ request }) => {
   try {
@@ -16,8 +17,10 @@ export const action = async ({ request }) => {
       try {
         // Use your permanent Admin API token
         const client = new GraphqlClient({
-          storeDomain: shop,
-          accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+          session: {
+            shop,
+            accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+          },
         });
 
         // Iterate line items
