@@ -1,5 +1,5 @@
 // app/routes/webhooks.orders-create.jsx
-import { authenticate } from "@shopify/shopify-api";
+import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
   try {
