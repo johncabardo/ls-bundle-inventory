@@ -52,6 +52,7 @@ export const action = async ({ request }) => {
       }
       return str;
     };
+    console.log('1');
 
     // Helper: Shopify REST request
     const shopifyFetch = async (path, options = {}) => {
@@ -68,6 +69,7 @@ export const action = async ({ request }) => {
       let body = null;
       try {
         body = text ? JSON.parse(text) : null;
+        console.log(body);
       } catch (e) {
         console.warn("⚠️ Non-JSON response from Shopify:", text);
       }
@@ -76,6 +78,7 @@ export const action = async ({ request }) => {
 
     // Iterate order line items
     const lineItems = payload?.line_items || [];
+    console.log(lineItems);
     for (const line of lineItems) {
       const bundleAttr = line.properties?._bundle_variants;
       if (!bundleAttr) continue;
