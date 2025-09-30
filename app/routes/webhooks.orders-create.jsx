@@ -8,6 +8,7 @@ export const action = async ({ request }) => {
 
     if (topic === "orders/create") {
       try {
+        const payload = JSON.parse(body);
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
         // ✅ Admin GraphQL client
