@@ -69,7 +69,7 @@ export const action = async ({ request }) => {
       let body = null;
       try {
         body = text ? JSON.parse(text) : null;
-        console.log(body);
+        console.log('body:'+body);
       } catch (e) {
         console.warn("⚠️ Non-JSON response from Shopify:", text);
       }
@@ -78,7 +78,7 @@ export const action = async ({ request }) => {
 
     // Iterate order line items
     const lineItems = payload?.line_items || [];
-    console.log(lineItems);
+    console.log('lineItems:'+lineItems);
     for (const line of lineItems) {
       const bundleAttr = line.properties?._bundle_variants;
       if (!bundleAttr) continue;
