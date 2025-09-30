@@ -33,9 +33,6 @@ export const action = async ({ request }) => {
       return new Response("Ignored", { status: 200 });
     }
 
-    console.log(`🔓 Processing ORDERS_CREATE webhook from ${shop}`);
-    console.log("Order id:", payload?.id);
-
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
     if (!ACCESS_TOKEN) {
       console.error("❌ SHOPIFY_ADMIN_API_ACCESS_TOKEN is not set");
@@ -52,7 +49,6 @@ export const action = async ({ request }) => {
       }
       return str;
     };
-    console.log('1');
 
     // Helper: Shopify REST request
     const shopifyFetch = async (path, options = {}) => {
@@ -69,21 +65,18 @@ export const action = async ({ request }) => {
       let body = null;
       try {
         body = text ? JSON.parse(text) : null;
-        console.log('body:'+body);
       } catch (e) {
         console.warn("⚠️ Non-JSON response from Shopify:", text);
       }
       return { ok: res.ok, status: res.status, body, raw: text };
     };
-
+    const notes = payload.note_attributes || [];
     // Iterate order line items
     const lineItems = payload?.line_items || [];
-    console.log('lineItems:'+lineItems);
     for (const line of lineItems) {
       const bundleProp = line.properties?.find(p => p.name === "_bundle_variants");
       const bundleAttr = bundleProp?.value;
-      console.log(line.properties);
-      console.log(bundleAttr);
+      notes.push({ name: "_bundle_variants", value: bundleAttr });
       if (!bundleAttr) continue;
 
       const childDefs = bundleAttr
@@ -91,8 +84,6 @@ export const action = async ({ request }) => {
       .map((s) => s.trim())
       .filter(Boolean)
       .slice(1); // remove first element
-
-      console.log(childDefs);
 
       for (const def of childDefs) {
         const [rawVariantId, qtyStr] = def.split("_");
@@ -175,6 +166,10 @@ export const action = async ({ request }) => {
         }
       }
     }
+    await shopifyFetch(`orders/${payload.id}.json`, {
+      method: "PUT",
+      body: JSON.stringify({ order: { note_attributes: notes } }),
+    });
 
     return new Response("Webhook processed", { status: 200 });
   } catch (err) {
