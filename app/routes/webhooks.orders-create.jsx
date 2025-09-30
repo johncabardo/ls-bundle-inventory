@@ -1,5 +1,4 @@
-import { GraphqlClient } from "@shopify/shopify-api/lib/clients/admin/graphql/index.js";
-
+import { GraphqlClient } from "@shopify/shopify-api";
 
 export const action = async ({ request }) => {
   try {
