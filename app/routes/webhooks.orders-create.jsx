@@ -1,14 +1,16 @@
 import { authenticate } from "../shopify.server";
 
-export const loader = async ({ request }) => {
+export const action = async ({ request }) => {
   try {
-    const response = await authenticate(request);
+    const { topic, shop, session, body } = await authenticate.webhook(request);
 
-    console.log("✅ OAuth grant succeeded");
-    return response;
-  } catch (err) {
-    console.error("❌ OAuth grant failed:", err);
-    throw err; // rethrow so Remix still handles the error correctly
+    console.log("✅ Webhook received:", { topic, shop });
+    console.log("📦 Order payload:", body);
+
+    return new Response("Webhook processed", { status: 200 });
+  } catch (error) {
+    console.error("❌ Webhook error:", error);
+    return new Response("Webhook failed", { status: 401 });
   }
 };
 
