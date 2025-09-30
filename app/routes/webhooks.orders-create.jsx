@@ -9,9 +9,6 @@ export const loader = () => {
 
 export const action = async ({ request }) => {
   try {
-    if (request.method !== "POST") {
-      return new Response("Method Not Allowed", { status: 405 });
-    }
 
     console.log("🔑 API Key:", process.env.SHOPIFY_API_KEY);
     console.log("🔑 Secret length:", process.env.SHOPIFY_API_SECRET?.length);
