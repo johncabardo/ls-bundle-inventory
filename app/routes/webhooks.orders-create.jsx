@@ -15,10 +15,8 @@ export const action = async ({ request }) => {
 
         // ✅ Admin GraphQL client
         const client = new GraphqlClient({
-          session: {
-            shop,
-            accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
-          },
+          domain: shop, // e.g. "your-store.myshopify.com"
+          accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
         });
 
         // Iterate line items
