@@ -1,23 +1,18 @@
-import { authenticate } from "../shopify.server";
-
 export const action = async ({ request }) => {
   try {
-    // Verify webhook with Shopify’s helper
-    const { topic, shop, session, payload } = await authenticate.webhook(request);
+    const body = await request.text();
 
-    console.log("✅ Webhook verified!");
-    console.log("🔔 Topic:", topic);
-    console.log("🏪 Shop:", shop);
-    console.log("📦 Payload:", payload);
+    console.log("🚀 Raw webhook received:");
+    console.log("Headers:", Object.fromEntries(request.headers));
+    console.log("Body:", body);
 
-    // Here you can handle the order payload (inventory, bundles, etc.)
-    return new Response("OK");
+    // ✅ Always respond 200 so Shopify sees it as delivered
+    return new Response("ok", { status: 200 });
   } catch (error) {
-    console.error("❌ Webhook error:", error);
-    return new Response("Unauthorized", { status: 401 });
+    console.error("❌ Webhook route error:", error);
+    return new Response("failed", { status: 500 });
   }
 };
-
 // // app/routes/webhooks.orders-create.jsx
 // import { authenticate } from "../shopify.server";
 
