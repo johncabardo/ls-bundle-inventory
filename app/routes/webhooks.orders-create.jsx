@@ -2,27 +2,25 @@
 /**
  * REST-only Shopify webhook handler for orders/create
  * - Bypasses @shopify/shopify-api entirely
- * - Optional lightweight secret check via X-Webhook-Token if WEBHOOK_SECRET is set
+ * - Optional lightweight secret check via X-Webhook-Token if ENCRYPTION_KEY is set
  *
  * Expects bundle line item property _bundle_variants formatted as:
  *   "123456789_1,987654321_2"
  *
  * Env required:
  *   SHOPIFY_ADMIN_API_ACCESS_TOKEN
- *   WEBHOOK_SECRET (optional)
+ *   ENCRYPTION_KEY (optional)
  */
 
 export const action = async ({ request }) => {
   try {
-    // Optional lightweight secret check (set WEBHOOK_SECRET in env)
-    const webhookSecret = process.env.WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const token = request.headers.get("x-webhook-token");
-      if (!token || token !== webhookSecret) {
-        console.warn("❌ Webhook token missing or invalid");
-        return new Response("Unauthorized", { status: 401 });
-      }
+    // Optional lightweight secret check (set ENCRYPTION_KEY in env)
+    const webhookSecret = process.env.ENCRYPTION_KEY;
+    const token = request.headers.get("x-webhook-token");
+    if (!token || token !== webhookSecret) {
+      return new Response("Unauthorized", { status: 401 });
     }
+
 
     // Parse incoming webhook payload
     const payload = await request.json().catch((e) => {
