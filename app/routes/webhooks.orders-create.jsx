@@ -1,34 +1,23 @@
 // app/routes/webhooks.orders-create.jsx
 /**
  * REST-only Shopify webhook handler for orders/create
- * - Bypasses @shopify/shopify-api entirely
- * - Optional lightweight secret check via X-Webhook-Token if ENCRYPTION_KEY is set
- *
- * Expects bundle line item property _bundle_variants formatted as:
- *   "123456789_1,987654321_2"
+ * - Adjusts inventory for bundle child variants
+ * - Logs every step for debugging
+ * - Bypasses Shopify API client entirely
  *
  * Env required:
  *   SHOPIFY_ADMIN_API_ACCESS_TOKEN
- *   ENCRYPTION_KEY (optional)
  */
 
 export const action = async ({ request }) => {
   try {
-    // Optional lightweight secret check (set ENCRYPTION_KEY in env)
-    // const webhookSecret = process.env.ENCRYPTION_KEY;
-    // const token = request.headers.get("x-webhook-token");
-    // if (!token || token !== webhookSecret) {
-    //   return new Response("Unauthorized", { status: 401 });
-    // }
-
-
     // Parse incoming webhook payload
     const payload = await request.json().catch((e) => {
       console.error("❌ Failed to parse JSON body:", e);
       throw new Error("Invalid JSON");
     });
 
-    // Determine shop and topic from headers (Shopify provides these)
+    // Determine shop from headers
     const shop = request.headers.get("x-shopify-shop-domain") || process.env.HOST;
     const topicHeader = request.headers.get("x-shopify-topic") || "";
     const normalizedTopic = topicHeader.toLowerCase();
@@ -38,7 +27,7 @@ export const action = async ({ request }) => {
       return new Response("Bad Request", { status: 400 });
     }
 
-    // Only handle orders/create (accept either "orders/create" or "orders_create")
+    // Only handle orders/create
     if (!(normalizedTopic === "orders/create" || normalizedTopic === "orders_create")) {
       console.log(`Ignored webhook topic: ${topicHeader}`);
       return new Response("Ignored", { status: 200 });
@@ -53,11 +42,10 @@ export const action = async ({ request }) => {
       return new Response("Server misconfiguration", { status: 500 });
     }
 
-    // Helper: extract numeric variant id (handles plain numbers or gid://...)
+    // Helper: extract numeric variant id from plain or gid string
     const extractVariantId = (v) => {
       if (!v) return null;
       const str = String(v);
-      // If it's a gid like gid://shopify/ProductVariant/123456789, take last part
       if (str.includes("/")) {
         const parts = str.split("/");
         return parts[parts.length - 1];
@@ -65,7 +53,7 @@ export const action = async ({ request }) => {
       return str;
     };
 
-    // Helper: request wrapper for Shopify REST
+    // Helper: Shopify REST request
     const shopifyFetch = async (path, options = {}) => {
       const url = `https://${shop}/admin/api/2025-07/${path}`;
       const res = await fetch(url, {
@@ -92,7 +80,11 @@ export const action = async ({ request }) => {
       const bundleAttr = line.properties?._bundle_variants;
       if (!bundleAttr) continue;
 
-      const childDefs = bundleAttr.split(",").map((s) => s.trim()).filter(Boolean);
+      const childDefs = bundleAttr
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(1); // remove first element
 
       for (const def of childDefs) {
         const [rawVariantId, qtyStr] = def.split("_");
@@ -105,9 +97,7 @@ export const action = async ({ request }) => {
 
         try {
           // 1) Get variant to find inventory_item_id
-          const variantRes = await shopifyFetch(`variants/${variantId}.json`, {
-            method: "GET",
-          });
+          const variantRes = await shopifyFetch(`variants/${variantId}.json`, { method: "GET" });
 
           if (!variantRes.ok || !variantRes.body?.variant) {
             console.warn(
@@ -149,6 +139,12 @@ export const action = async ({ request }) => {
               available_adjustment: -quantity,
             };
 
+            console.log("Adjusting inventory:", {
+              inventory_item_id: inventoryItemId,
+              location_id,
+              available_adjustment: -quantity,
+            });
+
             const adjustRes = await shopifyFetch(`inventory_levels/adjust.json`, {
               method: "POST",
               body: JSON.stringify(adjustBody),
@@ -160,7 +156,6 @@ export const action = async ({ request }) => {
                 adjustRes.status,
                 adjustRes.body || adjustRes.raw
               );
-              // do not throw — continue trying other levels/children
             } else {
               console.log(
                 `✅ Adjusted inventory_item ${inventoryItemId} by -${quantity} at location ${location_id}`
@@ -169,10 +164,9 @@ export const action = async ({ request }) => {
           }
         } catch (childErr) {
           console.error(`❌ Error processing child def "${def}":`, childErr);
-          // continue to next child
         }
-      } // end childDefs loop
-    } // end lineItems loop
+      }
+    }
 
     return new Response("Webhook processed", { status: 200 });
   } catch (err) {
