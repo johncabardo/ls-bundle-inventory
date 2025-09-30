@@ -1,4 +1,5 @@
 import { shopify } from "../shopify.server";
+import { Graphql } from "@shopify/shopify-api"; 
 
 export const action = async ({ request }) => {
   try {
@@ -14,9 +15,11 @@ export const action = async ({ request }) => {
         console.log(`🛒 New order ${payload.id} on ${shop}`);
 
         // ✅ Admin GraphQL client
-        const client = new shopify.clients.Graphql({
-          shop,
-          accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+        const client = new Graphql({
+          session: {
+            shop,
+            accessToken: process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN,
+          },
         });
 
         // Iterate line items
