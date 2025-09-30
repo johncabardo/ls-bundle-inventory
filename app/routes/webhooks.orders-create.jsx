@@ -1,6 +1,10 @@
 export const action = async ({ request }) => {
   try {
     const body = await request.text();
+    const headers = Object.fromEntries(request.headers);
+
+    const topic = headers["x-shopify-topic"];
+    const shop = headers["x-shopify-shop-domain"];
 
     if (topic === "ORDERS_CREATE") {
       try {
