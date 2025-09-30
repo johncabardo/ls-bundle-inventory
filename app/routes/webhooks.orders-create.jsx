@@ -70,13 +70,12 @@ export const action = async ({ request }) => {
       }
       return { ok: res.ok, status: res.status, body, raw: text };
     };
-    const notes = payload.note_attributes || [];
+    
     // Iterate order line items
     const lineItems = payload?.line_items || [];
     for (const line of lineItems) {
       const bundleProp = line.properties?.find(p => p.name === "_bundle_variants");
       const bundleAttr = bundleProp?.value;
-      notes.push({ name: "_bundle_variants", value: bundleAttr });
       if (!bundleAttr) continue;
 
       const childDefs = bundleAttr
@@ -166,10 +165,6 @@ export const action = async ({ request }) => {
         }
       }
     }
-    await shopifyFetch(`orders/${payload.id}.json`, {
-      method: "PUT",
-      body: JSON.stringify({ order: { note_attributes: notes } }),
-    });
 
     return new Response("Webhook processed", { status: 200 });
   } catch (err) {
