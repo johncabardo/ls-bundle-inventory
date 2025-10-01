@@ -39,10 +39,10 @@ export const action = async ({ request }) => {
     // Step 1: collect all child variant IDs from bundles
     const childVariantIds = new Set();
     for (const line of lineItems) {
-      const bundleAttr = line.attributes?.find(a => a.name === "_bundle_variants");
-      if (!bundleAttr) continue;
-
-      const childDefs = bundleAttr.value.split(",").map(s => s.trim()).filter(Boolean).slice(1);
+      const bundleProp = line.attributes?.find(p => p.name === "_bundle_variants");
+      if (!bundleProp) continue;
+      const childDefs = bundleProp.value.split(",").map(s => s.trim()).filter(Boolean).slice(1);
+      console.log(childDefs);
       for (const def of childDefs) {
         const [variantId] = def.split("_");
         if (variantId) childVariantIds.add(variantId);
@@ -52,14 +52,15 @@ export const action = async ({ request }) => {
     // Step 2: process bundles
     const noteAttributes = payload.note_attributes || [];
     for (const line of lineItems) {
-      const bundleAttrIndex = line.attributes?.findIndex(a => a.name === "_bundle_variants");
-      const bundleAttr = bundleAttrIndex >= 0 ? line.attributes[bundleAttrIndex] : null;
-      if (!bundleAttr) continue;
+      const bundlePropIndex = line.attributes?.findIndex(p => p.name === "_bundle_variants");
+      const bundleProp = bundlePropIndex >= 0 ? line.attributes[bundlePropIndex] : null;
+      if (!bundleProp) continue;
 
-      // Optional: move to note_attributes for order-level tracking
-      noteAttributes.push({ name: "_bundle_variants", value: bundleAttr.value });
+      // Move to note_attributes and remove from line item properties
+      noteAttributes.push({ name: "_bundle_variants", value: bundleProp.value });
+      line.attributes.splice(bundlePropIndex, 1);
 
-      const childDefs = bundleAttr.value.split(",").map(s => s.trim()).filter(Boolean).slice(1);
+      const childDefs = bundleProp.value.split(",").map(s => s.trim()).filter(Boolean).slice(1);
       for (const def of childDefs) {
         const [rawVariantId, qtyStr] = def.split("_");
         const variantId = extractVariantId(rawVariantId);
@@ -74,9 +75,7 @@ export const action = async ({ request }) => {
           const inventoryItemId = variantRes.body?.variant?.inventory_item_id;
           if (!inventoryItemId) continue;
 
-          const levelsRes = await shopifyFetch(
-            `inventory_levels.json?inventory_item_ids=${inventoryItemId}`
-          );
+          const levelsRes = await shopifyFetch(`inventory_levels.json?inventory_item_ids=${inventoryItemId}`);
           const levels = levelsRes.body?.inventory_levels || [];
           for (const level of levels) {
             if (!level.location_id) continue;
