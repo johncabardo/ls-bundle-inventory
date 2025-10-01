@@ -37,48 +37,79 @@ export const action = async ({ request }) => {
     const noteAttributes = payload.note_attributes || [];
     console.log("Webhook payload:", payload);
 
-    // ✅ Read _bundle_variants from note_attributes instead of line item properties
+    // ===============================
+    // 1️⃣ Adjust inventory using _bundle_variants
+    // ===============================
     const bundleAttr = noteAttributes.find(attr => attr.name === "_bundle_variants")?.value;
-    if (!bundleAttr) {
-      console.log("No bundle variants found in note_attributes");
-      return new Response("Webhook processed", { status: 200 });
+    if (bundleAttr) {
+      const childItems = bundleAttr
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      for (const child of childItems) {
+        const [rawVariantId, qtyStr] = child.split("_");
+        const variantId = extractVariantId(rawVariantId);
+        const quantity = Number(qtyStr || 0);
+        if (!variantId || quantity <= 0) continue;
+
+        try {
+          const variantRes = await shopifyFetch(`variants/${variantId}.json`);
+          const inventoryItemId = variantRes.body?.variant?.inventory_item_id;
+          if (!inventoryItemId) continue;
+
+          const levelsRes = await shopifyFetch(
+            `inventory_levels.json?inventory_item_ids=${inventoryItemId}`
+          );
+          const levels = levelsRes.body?.inventory_levels || [];
+
+          for (const level of levels) {
+            if (!level.location_id) continue;
+            await shopifyFetch(`inventory_levels/adjust.json`, {
+              method: "POST",
+              body: JSON.stringify({
+                location_id: level.location_id,
+                inventory_item_id: inventoryItemId,
+                available_adjustment: -quantity,
+              }),
+            });
+          }
+        } catch (err) {
+          console.error(`Error adjusting inventory for variant ${variantId}:`, err);
+        }
+      }
+    } else {
+      console.log("No _bundle_variants found");
     }
 
-    const childItems = bundleAttr
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    // ===============================
+    // 2️⃣ Update _vet_mix_packs in note_attributes for readability
+    // ===============================
+    const vetMixAttr = noteAttributes.find(attr => attr.name === "_vet_mix_packs")?.value;
+    if (vetMixAttr) {
+      const formatted = vetMixAttr
+        .split(",")
+        .map((item) => {
+          const [qty, size, title] = item.trim().split("~");
+          return `${title} ${size} - ${qty}`;
+        })
+        .join(", ");
 
-    for (const child of childItems) {
-      const [rawVariantId, qtyStr] = child.split("_");
-      const variantId = extractVariantId(rawVariantId);
-      const quantity = Number(qtyStr || 0);
-      if (!variantId || quantity <= 0) continue;
-
-      try {
-        const variantRes = await shopifyFetch(`variants/${variantId}.json`);
-        const inventoryItemId = variantRes.body?.variant?.inventory_item_id;
-        if (!inventoryItemId) continue;
-
-        const levelsRes = await shopifyFetch(
-          `inventory_levels.json?inventory_item_ids=${inventoryItemId}`
-        );
-        const levels = levelsRes.body?.inventory_levels || [];
-
-        for (const level of levels) {
-          if (!level.location_id) continue;
-          await shopifyFetch(`inventory_levels/adjust.json`, {
-            method: "POST",
-            body: JSON.stringify({
-              location_id: level.location_id,
-              inventory_item_id: inventoryItemId,
-              available_adjustment: -quantity,
-            }),
-          });
-        }
-      } catch (err) {
-        console.error(`Error adjusting inventory for variant ${variantId}:`, err);
-      }
+      // Update order via Shopify Admin API
+      await shopifyFetch(`orders/${payload.id}.json`, {
+        method: "PUT",
+        body: JSON.stringify({
+          order: {
+            id: payload.id,
+            note_attributes: [
+              {
+                name: "_vet_mix_packs",
+                value: formatted
+              }
+            ]
+          }
+        }),
+      });
     }
 
     return new Response("Webhook processed", { status: 200 });
