@@ -85,28 +85,27 @@ export const action = async ({ request }) => {
     // ===============================
     // 2️⃣ Update _vet_mix_packs in note_attributes for readability
     // ===============================
-    const vetMixAttr = noteAttributes.find(attr => attr.name === "_vet_mix_packs")?.value;
-    if (vetMixAttr) {
-      const formatted = vetMixAttr
+    const vetMixAttrIndex  = noteAttributes.findIndex(attr => attr.name === "_vet_mix_packs")?.value;
+    if (vetMixAttrIndex >= 0) {
+      const vetMixValue = noteAttributes[vetMixAttrIndex].value;
+      const formatted = vetMixValue
         .split(",")
         .map((item) => {
           const [qty, size, title] = item.trim().split("~");
           return `${title} ${size} - ${qty}`;
         })
         .join(", ");
-
-      // Update order via Shopify Admin API
+    
+      // Replace the value in the array
+      noteAttributes[vetMixAttrIndex].value = formatted;
+    
+      // Send full array back to Shopify
       await shopifyFetch(`orders/${payload.id}.json`, {
         method: "PUT",
         body: JSON.stringify({
           order: {
             id: payload.id,
-            note_attributes: [
-              {
-                name: "_vet_mix_packs",
-                value: formatted
-              }
-            ]
+            note_attributes: noteAttributes
           }
         }),
       });
