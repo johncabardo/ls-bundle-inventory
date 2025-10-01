@@ -81,16 +81,16 @@ export const action = async ({ request }) => {
     } else {
       console.log("No _bundle_variants found");
     }
-    noteAttributes = [];
-    noteAttributes = [
-      {
-        name: "_vet_mix_packs",
-        value: JSON.stringify([
-          { title: "Lick Sleeve XS", qty: 2 },
-          { title: "Lick Sleeve S", qty: 3 }
-        ])
-      }
-    ];
+    noteAttributes.length = 0;  // empties the existing array
+
+// Push new attribute
+noteAttributes.push({
+  name: "_vet_mix_packs",
+  value: JSON.stringify([
+    { title: "Lick Sleeve XS", qty: 2 },
+    { title: "Lick Sleeve S", qty: 3 }
+  ])
+});
 
     return new Response("Webhook processed", { status: 200 });
   } catch (err) {
