@@ -34,59 +34,50 @@ export const action = async ({ request }) => {
       return { ok: res.ok, status: res.status, body, raw: text };
     };
 
-    const lineItems = payload?.line_items || [];
     const noteAttributes = payload.note_attributes || [];
-    console.log(payload);
+    console.log("Webhook payload:", payload);
 
-    for (const line of lineItems) {
-      // Find bundle properties
-      const bundlePropIndex = line.properties?.findIndex(
-        (p) => p.name === "_bundle_variants"
-      );
-      if (bundlePropIndex < 0) continue;
+    // ✅ Read _bundle_variants from note_attributes instead of line item properties
+    const bundleAttr = noteAttributes.find(attr => attr.name === "_bundle_variants")?.value;
+    if (!bundleAttr) {
+      console.log("No bundle variants found in note_attributes");
+      return new Response("Webhook processed", { status: 200 });
+    }
 
-      const bundleProp = line.properties[bundlePropIndex];
-      if (!bundleProp?.value) continue;
+    const childItems = bundleAttr
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-      // 1️⃣ Move bundle data to note_attributes
-      // noteAttributes.push({ name: bundleProp.name, value: bundleProp.value });
+    for (const child of childItems) {
+      const [rawVariantId, qtyStr] = child.split("_");
+      const variantId = extractVariantId(rawVariantId);
+      const quantity = Number(qtyStr || 0);
+      if (!variantId || quantity <= 0) continue;
 
-      // 2️⃣ Remove from line.properties so it doesn't show on order page
-      // line.properties.splice(bundlePropIndex, 1);
+      try {
+        const variantRes = await shopifyFetch(`variants/${variantId}.json`);
+        const inventoryItemId = variantRes.body?.variant?.inventory_item_id;
+        if (!inventoryItemId) continue;
 
-      // 3️⃣ Parse child items and adjust inventory
-      const childItems = bundleProp.value.split(",").map((s) => s.trim()).filter(Boolean);
+        const levelsRes = await shopifyFetch(
+          `inventory_levels.json?inventory_item_ids=${inventoryItemId}`
+        );
+        const levels = levelsRes.body?.inventory_levels || [];
 
-      for (const child of childItems) {
-        const [rawVariantId, qtyStr] = child.split("_");
-        const variantId = extractVariantId(rawVariantId);
-        const quantity = Number(qtyStr || 0);
-        if (!variantId || quantity <= 0) continue;
-
-        try {
-          const variantRes = await shopifyFetch(`variants/${variantId}.json`);
-          const inventoryItemId = variantRes.body?.variant?.inventory_item_id;
-          if (!inventoryItemId) continue;
-
-          const levelsRes = await shopifyFetch(
-            `inventory_levels.json?inventory_item_ids=${inventoryItemId}`
-          );
-          const levels = levelsRes.body?.inventory_levels || [];
-
-          for (const level of levels) {
-            if (!level.location_id) continue;
-            await shopifyFetch(`inventory_levels/adjust.json`, {
-              method: "POST",
-              body: JSON.stringify({
-                location_id: level.location_id,
-                inventory_item_id: inventoryItemId,
-                available_adjustment: -quantity,
-              }),
-            });
-          }
-        } catch (err) {
-          console.error(`Error adjusting inventory for variant ${variantId}:`, err);
+        for (const level of levels) {
+          if (!level.location_id) continue;
+          await shopifyFetch(`inventory_levels/adjust.json`, {
+            method: "POST",
+            body: JSON.stringify({
+              location_id: level.location_id,
+              inventory_item_id: inventoryItemId,
+              available_adjustment: -quantity,
+            }),
+          });
         }
+      } catch (err) {
+        console.error(`Error adjusting inventory for variant ${variantId}:`, err);
       }
     }
 
