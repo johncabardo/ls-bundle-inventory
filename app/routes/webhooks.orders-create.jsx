@@ -81,35 +81,16 @@ export const action = async ({ request }) => {
     } else {
       console.log("No _bundle_variants found");
     }
-
-    // ===============================
-    // 2️⃣ Update _vet_mix_packs in note_attributes for readability
-    // ===============================
-    const vetMixAttrIndex  = noteAttributes.findIndex(attr => attr.name === "_vet_mix_packs")?.value;
-    if (vetMixAttrIndex >= 0) {
-      const vetMixValue = noteAttributes[vetMixAttrIndex].value;
-      const formatted = vetMixValue
-        .split(",")
-        .map((item) => {
-          const [qty, size, title] = item.trim().split("~");
-          return `${title} ${size} - ${qty}`;
-        })
-        .join(", ");
-    
-      // Replace the value in the array
-      noteAttributes[vetMixAttrIndex].value = formatted;
-    
-      // Send full array back to Shopify
-      await shopifyFetch(`orders/${payload.id}.json`, {
-        method: "PUT",
-        body: JSON.stringify({
-          order: {
-            id: payload.id,
-            note_attributes: noteAttributes
-          }
-        }),
-      });
-    }
+    noteAttributes = [];
+    noteAttributes = [
+      {
+        name: "_vet_mix_packs",
+        value: JSON.stringify([
+          { title: "Lick Sleeve XS", qty: 2 },
+          { title: "Lick Sleeve S", qty: 3 }
+        ])
+      }
+    ];
 
     return new Response("Webhook processed", { status: 200 });
   } catch (err) {
