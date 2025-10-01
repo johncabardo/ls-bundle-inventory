@@ -35,7 +35,6 @@ export const action = async ({ request }) => {
     };
 
     const noteAttributes = payload.note_attributes || [];
-    console.log("Webhook payload:", payload);
 
     // ===============================
     // 1️⃣ Adjust inventory using _bundle_variants
