@@ -36,7 +36,8 @@ export const action = async ({ request }) => {
 
     const lineItems = payload?.line_items || [];
     const noteAttributes = payload.note_attributes || [];
-console.log(lineItems);
+    console.log(payload);
+
     for (const line of lineItems) {
       // Find bundle properties
       const bundlePropIndex = line.properties?.findIndex(
