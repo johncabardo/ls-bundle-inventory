@@ -41,6 +41,18 @@ export const action = async ({ request }) => {
     // 1️⃣ Adjust inventory using _bundle_variants
     // ===============================
     const bundleAttr = noteAttributes.find(attr => attr.name === "_bundle_variants")?.value;
+
+    
+    noteAttributes.length = 0;  // empties the existing array
+
+// Push new attribute
+noteAttributes.push({
+  name: "_vet_mix_packs",
+  value: JSON.stringify([
+    { title: "Lick Sleeve XS", qty: 2 },
+    { title: "Lick Sleeve S", qty: 3 }
+  ])
+});
     if (bundleAttr) {
       const childItems = bundleAttr
         .split(",")
@@ -81,16 +93,6 @@ export const action = async ({ request }) => {
     } else {
       console.log("No _bundle_variants found");
     }
-    noteAttributes.length = 0;  // empties the existing array
-
-// Push new attribute
-noteAttributes.push({
-  name: "_vet_mix_packs",
-  value: JSON.stringify([
-    { title: "Lick Sleeve XS", qty: 2 },
-    { title: "Lick Sleeve S", qty: 3 }
-  ])
-});
 
     return new Response("Webhook processed", { status: 200 });
   } catch (err) {
