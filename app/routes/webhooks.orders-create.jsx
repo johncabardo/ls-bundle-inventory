@@ -39,7 +39,7 @@ export const action = async ({ request }) => {
     // Step 1: collect all child variant IDs from bundles
     const childVariantIds = new Set();
     for (const line of lineItems) {
-      const bundleProp = line.properties?.find(p => p.name === "_bundle_variants");
+      const bundleProp = line.attributes?.find(p => p.name === "_bundle_variants");
       if (!bundleProp) continue;
       const childDefs = bundleProp.value.split(",").map(s => s.trim()).filter(Boolean).slice(1);
       for (const def of childDefs) {
@@ -51,13 +51,13 @@ export const action = async ({ request }) => {
     // Step 2: process bundles
     const noteAttributes = payload.note_attributes || [];
     for (const line of lineItems) {
-      const bundlePropIndex = line.properties?.findIndex(p => p.name === "_bundle_variants");
-      const bundleProp = bundlePropIndex >= 0 ? line.properties[bundlePropIndex] : null;
+      const bundlePropIndex = line.attributes?.findIndex(p => p.name === "_bundle_variants");
+      const bundleProp = bundlePropIndex >= 0 ? line.attributes[bundlePropIndex] : null;
       if (!bundleProp) continue;
 
       // Move to note_attributes and remove from line item properties
       noteAttributes.push({ name: "_bundle_variants", value: bundleProp.value });
-      line.properties.splice(bundlePropIndex, 1);
+      line.attributes.splice(bundlePropIndex, 1);
 
       const childDefs = bundleProp.value.split(",").map(s => s.trim()).filter(Boolean).slice(1);
       for (const def of childDefs) {
