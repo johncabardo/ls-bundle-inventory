@@ -35,47 +35,43 @@ export const action = async ({ request }) => {
     };
 
     const lineItems = payload?.line_items || [];
-
-    // Step 1: collect all child variant IDs from bundles
-    const childVariantIds = new Set();
-    for (const line of lineItems) {
-      const bundleProp = line.attributes?.find(p => p.name === "_bundle_variants");
-      if (!bundleProp) continue;
-      const childDefs = bundleProp.value.split(",").map(s => s.trim()).filter(Boolean).slice(1);
-      for (const def of childDefs) {
-        const [variantId] = def.split("_");
-        if (variantId) childVariantIds.add(variantId);
-      }
-    }
-
-    // Step 2: process bundles
     const noteAttributes = payload.note_attributes || [];
+
     for (const line of lineItems) {
-      const bundlePropIndex = line.attributes?.findIndex(p => p.name === "_bundle_variants");
-      const bundleProp = bundlePropIndex >= 0 ? line.attributes[bundlePropIndex] : null;
-      if (!bundleProp) continue;
+      // Find bundle properties
+      const bundlePropIndex = line.properties?.findIndex(
+        (p) => p.name === "_bundle_variants"
+      );
+      if (bundlePropIndex < 0) continue;
 
-      // Move to note_attributes and remove from line item properties
-      noteAttributes.push({ name: "_bundle_variants", value: bundleProp.value });
-      line.attributes.splice(bundlePropIndex, 1);
+      const bundleProp = line.properties[bundlePropIndex];
+      if (!bundleProp?.value) continue;
 
-      const childDefs = bundleProp.value.split(",").map(s => s.trim()).filter(Boolean).slice(1);
-      for (const def of childDefs) {
-        const [rawVariantId, qtyStr] = def.split("_");
+      // 1️⃣ Move bundle data to note_attributes
+      noteAttributes.push({ name: bundleProp.name, value: bundleProp.value });
+
+      // 2️⃣ Remove from line.properties so it doesn't show on order page
+      line.properties.splice(bundlePropIndex, 1);
+
+      // 3️⃣ Parse child items and adjust inventory
+      const childItems = bundleProp.value.split(",").map((s) => s.trim()).filter(Boolean);
+
+      for (const child of childItems) {
+        const [rawVariantId, qtyStr] = child.split("_");
         const variantId = extractVariantId(rawVariantId);
         const quantity = Number(qtyStr || 0);
-        if (!variantId || !quantity || Number.isNaN(quantity)) continue;
+        if (!variantId || quantity <= 0) continue;
 
         try {
-          // Skip if this variant is also a standalone line item (prevent double decrement)
-          if (!childVariantIds.has(variantId)) continue;
-
           const variantRes = await shopifyFetch(`variants/${variantId}.json`);
           const inventoryItemId = variantRes.body?.variant?.inventory_item_id;
           if (!inventoryItemId) continue;
 
-          const levelsRes = await shopifyFetch(`inventory_levels.json?inventory_item_ids=${inventoryItemId}`);
+          const levelsRes = await shopifyFetch(
+            `inventory_levels.json?inventory_item_ids=${inventoryItemId}`
+          );
           const levels = levelsRes.body?.inventory_levels || [];
+
           for (const level of levels) {
             if (!level.location_id) continue;
             await shopifyFetch(`inventory_levels/adjust.json`, {
