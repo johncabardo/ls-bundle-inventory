@@ -40,7 +40,7 @@ export const action = async ({ request }) => {
     // ===============================
     // 1️⃣ Adjust inventory using _bundle_variants
     // ===============================
-    const bundleAttr = noteAttributes.find(attr => attr.name === "_bundle_variants")?.value;
+    const bundleAttr = noteAttributes.find(attr => attr.name === "Order Mapping:")?.value;
     
     if (bundleAttr) {
       const childItems = bundleAttr
