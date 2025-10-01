@@ -41,18 +41,9 @@ export const action = async ({ request }) => {
     // 1️⃣ Adjust inventory using _bundle_variants
     // ===============================
     const bundleAttr = noteAttributes.find(attr => attr.name === "_bundle_variants")?.value;
-
     
-    noteAttributes.length = 0;  // empties the existing array
+    let formattedVetMix = []; // Will hold formatted _vet_mix_packs
 
-// Push new attribute
-noteAttributes.push({
-  name: "_vet_mix_packs",
-  value: JSON.stringify([
-    { title: "Lick Sleeve XS", qty: 2 },
-    { title: "Lick Sleeve S", qty: 3 }
-  ])
-});
     if (bundleAttr) {
       const childItems = bundleAttr
         .split(",")
@@ -68,6 +59,8 @@ noteAttributes.push({
         try {
           const variantRes = await shopifyFetch(`variants/${variantId}.json`);
           const inventoryItemId = variantRes.body?.variant?.inventory_item_id;
+          const variantTitle = variantRes.body?.variant?.title || "Unknown";
+
           if (!inventoryItemId) continue;
 
           const levelsRes = await shopifyFetch(
@@ -86,6 +79,10 @@ noteAttributes.push({
               }),
             });
           }
+
+          // Push formatted item for _vet_mix_packs
+          formattedVetMix.push({ title: variantTitle, qty: quantity });
+
         } catch (err) {
           console.error(`Error adjusting inventory for variant ${variantId}:`, err);
         }
@@ -94,7 +91,34 @@ noteAttributes.push({
       console.log("No _bundle_variants found");
     }
 
+    // ===============================
+    // 2️⃣ Update _vet_mix_packs note_attribute
+    // ===============================
+    if (formattedVetMix.length > 0) {
+      // Remove existing _vet_mix_packs if exists
+      const existingIndex = noteAttributes.findIndex(attr => attr.name === "_vet_mix_packs");
+      if (existingIndex >= 0) noteAttributes.splice(existingIndex, 1);
+
+      // Add new formatted _vet_mix_packs
+      noteAttributes.push({
+        name: "_vet_mix_packs",
+        value: JSON.stringify(formattedVetMix)
+      });
+
+      // Send updated note_attributes back to Shopify
+      await shopifyFetch(`orders/${payload.id}.json`, {
+        method: "PUT",
+        body: JSON.stringify({
+          order: {
+            id: payload.id,
+            note_attributes: noteAttributes
+          }
+        })
+      });
+    }
+
     return new Response("Webhook processed", { status: 200 });
+
   } catch (err) {
     console.error("Webhook error:", err);
     return new Response("Webhook failed", { status: 500 });
