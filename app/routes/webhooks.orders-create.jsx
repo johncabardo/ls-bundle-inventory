@@ -36,7 +36,7 @@ export const action = async ({ request }) => {
 
     const lineItems = payload?.line_items || [];
     const noteAttributes = payload.note_attributes || [];
-
+console.log(lineItems);
     for (const line of lineItems) {
       // Find bundle properties
       const bundlePropIndex = line.properties?.findIndex(
@@ -48,10 +48,10 @@ export const action = async ({ request }) => {
       if (!bundleProp?.value) continue;
 
       // 1️⃣ Move bundle data to note_attributes
-      noteAttributes.push({ name: bundleProp.name, value: bundleProp.value });
+      // noteAttributes.push({ name: bundleProp.name, value: bundleProp.value });
 
       // 2️⃣ Remove from line.properties so it doesn't show on order page
-      line.properties.splice(bundlePropIndex, 1);
+      // line.properties.splice(bundlePropIndex, 1);
 
       // 3️⃣ Parse child items and adjust inventory
       const childItems = bundleProp.value.split(",").map((s) => s.trim()).filter(Boolean);
