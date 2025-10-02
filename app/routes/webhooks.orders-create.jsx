@@ -45,7 +45,8 @@ export const action = async ({ request }) => {
       const childItems = bundleAttr
         .split(",")
         .map((s) => s.trim())
-        .filter(Boolean);
+        .filter(Boolean)
+        .slice(1);
 
       for (const child of childItems) {
         const [rawVariantId, qtyStr] = child.split("_");
